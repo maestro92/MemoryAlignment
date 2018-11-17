@@ -1,0 +1,103 @@
+I was watching this video, and saw this line of code that kind of confused me 
+
+30:59
+https://www.youtube.com/watch?v=blcNbU70I9o
+
+Assert(((uintptr)OutputTarget->Memory & 15) == 0);
+
+its kind of one of those concept that I think I know, but I dont fully grasp the details.
+so I just wanted to go into Visual Studio and do a bit of playing around.
+
+
+So i got the Watch Window and the Memory window open
+so I had this piece of code 
+
+                int main(int argc, char *argv[])
+                {   
+                    int i = 1;
+                    int j = 2;
+                    int k = 3;
+
+                    return 0;
+                }
+
+
+when I printed the memory address of i, it is at 0x0097fb44
+
+
+so I printed the memory address into the Memory window:
+0x0097FB28  cc cc cc cc 03 00 00 00 cc cc cc cc cc cc  ÌÌÌÌ....ÌÌÌÌÌÌ
+0x0097FB36  cc cc 02 00 00 00 cc cc cc cc cc cc cc cc  ÌÌ....ÌÌÌÌÌÌÌÌ
+0x0097FB44  01 00 00 00 cc cc cc cc 95 d7 c2 7c 64 fb 
+
+0x0097FB36 is 9960246
+0x0097FB44 is 9960260 
+its a 14 byte difference
+
+
+then it occured to me, that if I stretch the memory window, maybe I can get it to aligned nicely.
+
+0x0097FB20  cc cc cc 61 cc cc cc cc cc cc cc cc 03 00 00 00  ÌÌÌaÌÌÌÌÌÌÌÌ....
+0x0097FB30  cc cc cc cc cc cc cc cc 02 00 00 00 cc cc cc cc  ÌÌÌÌÌÌÌÌ....ÌÌÌÌ
+0x0097FB40  cc cc cc cc 01 00 00 00 cc cc cc cc 95 d7 c2 7c  ÌÌÌÌ....ÌÌÌÌ.×Â|
+
+0x0097FB20 = 9960224
+0x0097FB30 = 9960240
+0x0097FB40 = 9960256
+
+and it is starting to align nicely.
+https://www.mathsisfun.com/binary-decimal-hexadecimal-converter.html
+
+
+
+
+for 16 byte aligned, we use (number & 15);
+15 is 1111 in binary
+
+so we want numbers that end with 0000 in binary
+
+so the numbers that are 16 byte aligned are 
+byte 16     0x10    10000
+byte 32     0x20    100000
+byte 48     0x30    110000
+...
+...
+
+
+another example 
+for 4 byte aligned, we use (number & 3);
+3 is 11 in binary
+
+so we want numbers that end with 00 in binary
+
+so the numbers that are 4 byte aligned are 
+byte 4      0x4     100
+byte 8      0x8     1000
+byte 12     0xC     11000
+...
+...
+
+
+so back to our visaul studio window, 
+if you are debugging things that are suppose to be 16 bytes aligned 
+
+just stretch the memory window to the size that memory address are consecutive and the last number is 0
+
+0x0097FB20  cc cc cc 61 cc cc cc cc cc cc cc cc 03 00 00 00  ÌÌÌaÌÌÌÌÌÌÌÌ....
+0x0097FB30  cc cc cc cc cc cc cc cc 02 00 00 00 cc cc cc cc  ÌÌÌÌÌÌÌÌ....ÌÌÌÌ
+0x0097FB40  cc cc cc cc 01 00 00 00 cc cc cc cc 95 d7 c2 7c  ÌÌÌÌ....ÌÌÌÌ.×Â|
+
+
+and the in the context of the original video that I was watching.
+he was rendering image in a multithreading context, and he wanted each thread to render 4 pixels, which means 16 bytes memory aligned.
+
+One of the operations he was doing was 
+
+                Assert(((uintptr)OutputTarget->Memory & 15) == 0);
+
+where he was checking the output framebuffer starts at a 16 byte alignment address
+
+so here if he was debugging, each row in the memory window is 4 pixels, 16 pixels and thats exactly a threads work
+
+
+
